@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Goloriolo · Control de Caja Diaria</title>
+<style>
+:root{
+  --rosa:#EC407A; --rosa-fuerte:#C2185B; --violeta:#6A1B9A; --violeta-claro:#9C27B0;
+  --rosa-claro:#FCE4EC; --amarillo:#FFF9C4; --verde:#C8E6C9; --rojo:#FFCDD2;
+  --celeste:#E1F5FE; --naranja:#FFE0B2;
+  --texto:#1a1a1a; --gris:#666; --borde:#e0d4dc;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;font-family:"Open Sans","Segoe UI",Arial,sans-serif;color:var(--texto);background:#faf6f8;font-size:17px;line-height:1.5}
+header{background:linear-gradient(135deg,var(--violeta),var(--rosa-fuerte));color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+header h1{margin:0;font-size:24px;font-weight:800}
+header .meta{display:flex;gap:12px;align-items:flex-end}
+header label{font-size:13px;opacity:.9;display:block;margin-bottom:2px}
+header input{font-size:16px;padding:7px 10px;border:0;border-radius:8px;background:#fff;color:#222;font-weight:700}
+.tabs{display:flex;gap:4px;background:#fff;padding:8px 16px 0;border-bottom:2px solid var(--rosa);overflow-x:auto;position:sticky;top:0;z-index:10}
+.tabs button{font-size:16px;padding:12px 22px;border:0;border-radius:10px 10px 0 0;cursor:pointer;font-weight:700;background:#f3e5f5;color:var(--violeta);white-space:nowrap}
+.tabs button.active{background:var(--rosa);color:#fff}
+main{max-width:1300px;margin:0 auto;padding:18px}
+.local{display:none}
+.local.active{display:block}
+.local-header{background:#fff;border-radius:12px;padding:14px 18px;margin-bottom:16px;box-shadow:0 2px 10px rgba(106,27,154,.08);border-left:6px solid var(--rosa)}
+.local-header h2{margin:0;color:var(--violeta);font-size:22px}
+.cajas{display:grid;grid-template-columns:repeat(auto-fit,minmax(580px,1fr));gap:16px}
+.caja{background:#fff;border-radius:14px;box-shadow:0 2px 10px rgba(106,27,154,.08);overflow:hidden;border:1px solid var(--borde)}
+.caja-head{background:linear-gradient(90deg,var(--rosa),var(--violeta-claro));color:#fff;padding:12px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.caja-head h3{margin:0;font-size:18px}
+.caja-head input.empleado{padding:7px 10px;border:0;border-radius:8px;background:#fff;font-size:15px;font-weight:700;min-width:180px}
+.caja-body{padding:14px 18px}
+.apertura-box{background:var(--celeste);border:1px solid #81D4FA;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.apertura-box label{font-weight:700;color:#01579B}
+.apertura-box small{display:block;font-size:12px;color:var(--gris);font-weight:400}
+.apertura-box input{width:160px;padding:8px 10px;font-size:15px;border:2px solid #81D4FA;border-radius:6px;text-align:right;background:#fff;font-weight:700}
+table.detalle{width:100%;border-collapse:collapse;font-size:15px}
+table.detalle th{background:var(--rosa-claro);color:var(--violeta);padding:8px;text-align:right;font-weight:700;border-bottom:2px solid var(--rosa)}
+table.detalle th:first-child{text-align:left}
+table.detalle td{padding:6px 4px;border-bottom:1px dashed #eee}
+table.detalle td:first-child{font-weight:600}
+table.detalle input[type=number]{width:100%;padding:8px;font-size:15px;border:2px solid #ddd;border-radius:6px;text-align:right;background:var(--amarillo);font-weight:700}
+table.detalle input[type=number]:focus{outline:none;border-color:var(--rosa)}
+tr.subtotal td{background:#f5f5f5;font-weight:700;padding:8px 4px}
+tr.subtotal td:last-child,tr.subtotal td:nth-last-child(2){text-align:right}
+tr.movs-info td{background:#FFEBEE;color:#b71c1c;font-size:13px;padding:6px 4px}
+tr.movs-info td:last-child{text-align:right;font-weight:700}
+tr.pagos td{background:var(--naranja)}
+tr.pagos input[type=number]{background:#FFCC80}
+.dif-caja{margin-top:12px;padding:10px;border-radius:8px;font-size:16px;font-weight:800;text-align:center;display:flex;justify-content:space-around;flex-wrap:wrap;gap:10px}
+.dif-caja .item{flex:1;min-width:140px}
+.dif-caja .item .label{display:block;font-size:12px;font-weight:600;opacity:.75}
+.dif-caja .item .val{display:block;font-size:18px}
+.dif-caja.ok{background:var(--verde);color:#1b5e20}
+.dif-caja.bad{background:var(--rojo);color:#b71c1c}
+.totales-local{background:#fff;border-radius:14px;padding:16px;margin-top:18px;box-shadow:0 2px 10px rgba(106,27,154,.08);border-top:4px solid var(--violeta)}
+.totales-local h3{margin:0 0 10px;color:var(--violeta)}
+.tabla-wrap{overflow-x:auto}
+.totales-local table{width:100%;border-collapse:collapse;font-size:14px;min-width:900px}
+.totales-local th,.totales-local td{padding:8px 6px;text-align:right;border-bottom:1px solid #eee;white-space:nowrap}
+.totales-local th:first-child,.totales-local td:first-child,
+.totales-local th:nth-child(2),.totales-local td:nth-child(2){text-align:left}
+.totales-local th{background:var(--rosa);color:#fff;font-size:13px}
+.totales-local tfoot td{background:var(--rosa-claro);font-weight:800;font-size:15px}
+
+/* === Movimientos === */
+.movimientos{background:#fff;border-radius:14px;padding:16px;margin-top:18px;box-shadow:0 2px 10px rgba(106,27,154,.08);border-top:4px solid var(--rosa)}
+.movimientos h3{margin:0 0 10px;color:var(--rosa-fuerte);font-size:20px}
+.mov-form{background:#FFF8E1;border:2px dashed var(--rosa);border-radius:10px;padding:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;align-items:end;margin-bottom:14px}
+.mov-form .campo{display:flex;flex-direction:column}
+.mov-form label{font-size:12px;font-weight:700;color:var(--violeta);margin-bottom:3px}
+.mov-form select,.mov-form input{padding:9px 10px;font-size:15px;border:2px solid #ddd;border-radius:8px;background:#fff;font-weight:600}
+.mov-form select:focus,.mov-form input:focus{outline:none;border-color:var(--rosa)}
+.mov-form .btn-add{background:var(--violeta);color:#fff;font-weight:700;padding:10px 16px;border:0;border-radius:8px;cursor:pointer;font-size:15px;height:42px}
+.mov-form .btn-add:hover{background:var(--rosa)}
+.mov-bloque{margin-top:14px;border:1px solid var(--borde);border-radius:10px;overflow:hidden}
+.mov-bloque-head{padding:10px 14px;font-weight:700;font-size:16px;display:flex;justify-content:space-between;align-items:center;color:#fff}
+.mov-bloque[data-tipo="gasto"] .mov-bloque-head{background:#E91E63}
+.mov-bloque[data-tipo="pago"] .mov-bloque-head{background:#7B1FA2}
+.mov-bloque[data-tipo="retiro"] .mov-bloque-head{background:#F57C00}
+.mov-bloque table{width:100%;border-collapse:collapse;font-size:14px}
+.mov-bloque th{background:#FAFAFA;color:var(--gris);padding:8px;text-align:left;font-weight:600;font-size:13px;border-bottom:1px solid var(--borde)}
+.mov-bloque th:nth-child(4),.mov-bloque td:nth-child(4){text-align:right}
+.mov-bloque th:last-child,.mov-bloque td:last-child{text-align:right;width:70px}
+.mov-bloque td{padding:8px;border-bottom:1px dashed #eee}
+.mov-bloque .vacio{text-align:center;color:var(--gris);padding:14px;font-style:italic}
+.mov-bloque .borrar{background:#ef5350;color:#fff;border:0;border-radius:6px;padding:5px 10px;cursor:pointer;font-size:13px;font-weight:700}
+.mov-bloque .borrar:hover{background:#d32f2f}
+.mov-resumen{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:14px}
+.mov-resumen .pill{padding:12px;border-radius:10px;text-align:center;color:#fff;font-weight:700}
+.mov-resumen .pill.gasto{background:#E91E63}
+.mov-resumen .pill.pago{background:#7B1FA2}
+.mov-resumen .pill.retiro{background:#F57C00}
+.mov-resumen .pill.total{background:var(--violeta)}
+.mov-resumen .pill .num{display:block;font-size:20px;margin-top:3px}
+
+.acciones{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;justify-content:center}
+button.action{font-size:15px;padding:12px 18px;border:0;border-radius:10px;cursor:pointer;font-weight:700}
+.btn-rosa{background:var(--rosa);color:#fff}
+.btn-violeta{background:var(--violeta);color:#fff}
+.btn-gris{background:#e0e0e0;color:#333}
+.nota{font-size:13px;color:var(--gris);text-align:center;margin-top:10px}
+.pasos{background:#fff;border-left:6px solid var(--rosa);padding:10px 16px;margin:12px 0 18px;border-radius:8px;font-size:14px}
+.pasos b{color:var(--violeta)}
+@media print{
+  .tabs,.acciones,.mov-form,.mov-bloque .borrar{display:none}
+  .local{display:block!important;page-break-after:always}
+  body{font-size:12px}
+  header{background:#fff;color:#000}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🍬 Goloriolo · Control de Caja Diaria</h1>
+  <div class="meta">
+    <div><label>Fecha</label><input type="date" id="fecha"></div>
+  </div>
+</header>
+
+<div class="tabs" id="tabs"></div>
+
+<main>
+  <div class="pasos">
+    <b>Pasos:</b> 1) Apertura. 2) Empleado de cada caja. 3) Scantech y Real por medio de pago. 4) Cargá Gastos / Pagos Fijos / Retiros en <b>Movimientos</b>: descuentan automáticamente del Efectivo Real de la caja elegida.
+  </div>
+  <div id="contenido"></div>
+  <div class="acciones">
+    <button class="action btn-rosa" onclick="exportarCSV()">⬇ Exportar día (CSV)</button>
+    <button class="action btn-violeta" onclick="window.print()">🖨 Imprimir todo</button>
+    <button class="action btn-gris" onclick="limpiar()">🧹 Limpiar todo</button>
+  </div>
+  <p class="nota">Datos guardados en este navegador. Exportá el CSV cada día para tener registro.</p>
+</main>
+
+<script>
+const LOCALES = ['Caseros','Congreso','Cuenca','Nogoya'];
+const CAJAS = ['Caja 1','Caja 2','Caja 3','Caja 4'];
+const MEDIOS = [
+  {k:'efectivo', label:'Efectivo'},
+  {k:'credito',  label:'Tarjeta crédito'},
+  {k:'debito',   label:'Tarjeta débito'},
+  {k:'mp',       label:'Mercado Pago'},
+  {k:'qr',       label:'QR / Transferencia'},
+];
+const TIPOS_MOV = [
+  {k:'gasto',  label:'Gasto',       seccion:'Gastos',       icon:'💸'},
+  {k:'pago',   label:'Pago Fijo',   seccion:'Pagos Fijos',  icon:'📅'},
+  {k:'retiro', label:'Retiro',      seccion:'Retiros',      icon:'💰'},
+];
+const KEY = 'goloriolo_caja_v4';
+const KEY_MOV = 'goloriolo_movimientos_v1';
+
+const fmt = n => '$' + Math.round(n||0).toLocaleString('es-AR');
+const slug = s => s.normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,'-');
+const escapeHTML = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fechaActual = () => document.getElementById('fecha').value;
+
+let movimientos = []; // {id, local, caja, tipo, detalle, importe, vendedora, fecha}
+
+function buildTabs(){
+  document.getElementById('tabs').innerHTML = LOCALES.map((L,i) =>
+    `<button class="${i===0?'active':''}" data-tab="${slug(L)}" onclick="showTab('${slug(L)}')">${L}</button>`
+  ).join('');
+}
+function showTab(s){
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab===s));
+  document.querySelectorAll('.local').forEach(d => d.classList.toggle('active', d.id==='local-'+s));
+}
+
+function buildUI(){
+  const cont = document.getElementById('contenido');
+  cont.innerHTML = LOCALES.map((L,i) => `
+    <section class="local ${i===0?'active':''}" id="local-${slug(L)}">
+      <div class="local-header"><h2>📍 ${L}</h2></div>
+      <div class="cajas">
+        ${CAJAS.map(C => buildCajaHTML(L,C)).join('')}
+      </div>
+      ${buildResumenLocalHTML(L)}
+      ${buildMovimientosHTML(L)}
+    </section>
+  `).join('');
+}
+
+function buildCajaHTML(L,C){
+  const id = `${slug(L)}_${slug(C)}`;
+  return `
+  <div class="caja" id="caja-${id}">
+    <div class="caja-head">
+      <h3>${C}</h3>
+      <input type="text" class="empleado" placeholder="Nombre del empleado" data-local="${L}" data-caja="${C}" data-campo="empleado">
+    </div>
+    <div class="caja-body">
+      <div class="apertura-box">
+        <div>
+          <label>🔓 Apertura de caja</label>
+          <small>Plata con la que arranca el día (fondo / cambio)</small>
+        </div>
+        <input type="number" min="0" step="1" placeholder="0" data-local="${L}" data-caja="${C}" data-campo="apertura">
+      </div>
+      <table class="detalle">
+        <thead><tr><th>Medio de pago</th><th>Scantech</th><th>Real</th></tr></thead>
+        <tbody>
+          ${MEDIOS.map(m => `
+          <tr>
+            <td>${m.label}${m.k==='efectivo'?' <small>(efectivo contado al cierre)</small>':''}</td>
+            <td><input type="number" min="0" step="1" data-local="${L}" data-caja="${C}" data-medio="${m.k}" data-tipo="scan" placeholder="0"></td>
+            <td><input type="number" min="0" step="1" data-local="${L}" data-caja="${C}" data-medio="${m.k}" data-tipo="real" placeholder="0"></td>
+          </tr>`).join('')}
+          <tr class="pagos">
+            <td>Pagos / Retiro <small>(extra manual)</small></td>
+            <td>—</td>
+            <td><input type="number" min="0" step="1" data-local="${L}" data-caja="${C}" data-medio="pagos" data-tipo="real" placeholder="0"></td>
+          </tr>
+          <tr class="movs-info"><td>Movimientos cargados <small>(gastos + pagos + retiros del día)</small></td><td>—</td><td id="movs-${id}">$0</td></tr>
+          <tr class="subtotal"><td>Total venta efectivo Real <small>(efectivo − apertura − movimientos)</small></td><td></td><td id="vef-${id}">$0</td></tr>
+        </tbody>
+      </table>
+      <div class="dif-caja ok" id="dif-${id}">
+        <div class="item"><span class="label">Total Scantech</span><span class="val" id="totscan-${id}">$0</span></div>
+        <div class="item"><span class="label">Total Real (ventas)</span><span class="val" id="totreal-${id}">$0</span></div>
+        <div class="item"><span class="label">Diferencia</span><span class="val" id="difval-${id}">$0</span></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildResumenLocalHTML(L){
+  const sl = slug(L);
+  return `
+  <div class="totales-local" id="resumen-${sl}">
+    <h3>Resumen de ${L}</h3>
+    <div class="tabla-wrap">
+    <table>
+      <thead><tr>
+        <th>Caja</th><th>Empleado</th>
+        <th>Apertura</th>
+        <th>Efectivo Real</th><th>Crédito</th><th>Débito</th><th>MP</th><th>QR/Transf</th>
+        <th>Total Scantech</th><th>Total Real</th><th>Diferencia</th>
+      </tr></thead>
+      <tbody id="resbody-${sl}"></tbody>
+      <tfoot><tr>
+        <td>TOTAL ${L}</td><td></td>
+        <td id="rt-ap-${sl}">$0</td>
+        <td id="rt-ef-${sl}">$0</td>
+        <td id="rt-cr-${sl}">$0</td>
+        <td id="rt-de-${sl}">$0</td>
+        <td id="rt-mp-${sl}">$0</td>
+        <td id="rt-qr-${sl}">$0</td>
+        <td id="rt-scan-${sl}">$0</td>
+        <td id="rt-real-${sl}">$0</td>
+        <td id="rt-dif-${sl}">$0</td>
+      </tr></tfoot>
+    </table>
+    </div>
+  </div>`;
+}
+
+function buildMovimientosHTML(L){
+  const sl = slug(L);
+  return `
+  <div class="movimientos" id="mov-${sl}">
+    <h3>📒 Movimientos ${L} <small style="font-weight:400;color:#666;font-size:13px">(del día seleccionado)</small></h3>
+    <div class="mov-form">
+      <div class="campo">
+        <label>Tipo</label>
+        <select id="movtipo-${sl}">
+          ${TIPOS_MOV.map(t => `<option value="${t.k}">${t.label}</option>`).join('')}
+        </select>
+      </div>
+      <div class="campo">
+        <label>Caja</label>
+        <select id="movcaja-${sl}">
+          ${CAJAS.map(C => `<option value="${C}">${C}</option>`).join('')}
+        </select>
+      </div>
+      <div class="campo">
+        <label>Detalle</label>
+        <input type="text" id="movdetalle-${sl}" placeholder="¿De qué? / ¿A quién?">
+      </div>
+      <div class="campo">
+        <label>Importe</label>
+        <input type="number" min="0" step="1" id="movimporte-${sl}" placeholder="0">
+      </div>
+      <button class="btn-add" onclick="addMovimiento('${L}')">＋ Agregar</button>
+    </div>
+
+    ${TIPOS_MOV.map(t => `
+      <div class="mov-bloque" data-tipo="${t.k}" id="bloque-${sl}-${t.k}">
+        <div class="mov-bloque-head">
+          <span>${t.icon} ${t.seccion}</span>
+          <span id="subt-${sl}-${t.k}">$0</span>
+        </div>
+        <table>
+          <thead><tr><th>Caja</th><th>Vendedora</th><th>Detalle</th><th>Importe</th><th></th></tr></thead>
+          <tbody id="tbody-${sl}-${t.k}"></tbody>
+        </table>
+      </div>`).join('')}
+
+    <div class="mov-resumen">
+      <div class="pill gasto"><span>Gastos</span><span class="num" id="tot-${sl}-gasto">$0</span></div>
+      <div class="pill pago"><span>Pagos Fijos</span><span class="num" id="tot-${sl}-pago">$0</span></div>
+      <div class="pill retiro"><span>Retiros</span><span class="num" id="tot-${sl}-retiro">$0</span></div>
+      <div class="pill total"><span>TOTAL Movimientos</span><span class="num" id="tot-${sl}-all">$0</span></div>
+    </div>
+  </div>`;
+}
+
+function getMovsDelDia(){
+  const f = fechaActual();
+  return movimientos.filter(m => m.fecha === f);
+}
+function getMovsCaja(L,C){
+  return getMovsDelDia()
+    .filter(m => m.local===L && m.caja===C)
+    .reduce((a,b) => a + (+b.importe||0), 0);
+}
+
+function addMovimiento(L){
+  const sl = slug(L);
+  const tipo = document.getElementById('movtipo-'+sl).value;
+  const caja = document.getElementById('movcaja-'+sl).value;
+  const detalle = document.getElementById('movdetalle-'+sl).value.trim();
+  const importe = +document.getElementById('movimporte-'+sl).value || 0;
+  if(!detalle){ alert('Cargá el detalle del movimiento.'); return; }
+  if(importe<=0){ alert('Cargá un importe mayor a 0.'); return; }
+  const fecha = fechaActual();
+  const vendedora = document.querySelector(`input[data-local="${L}"][data-caja="${caja}"][data-campo="empleado"]`)?.value || '';
+  movimientos.push({id:Date.now()+Math.random(), local:L, caja, tipo, detalle, importe, vendedora, fecha});
+  document.getElementById('movdetalle-'+sl).value = '';
+  document.getElementById('movimporte-'+sl).value = '';
+  document.getElementById('movdetalle-'+sl).focus();
+  guardarMovs();
+  recalc();
+}
+
+function delMovimiento(id){
+  movimientos = movimientos.filter(m => m.id!==id);
+  guardarMovs();
+  recalc();
+}
+
+function renderMovimientos(){
+  const movsDia = getMovsDelDia();
+  LOCALES.forEach(L => {
+    const sl = slug(L);
+    let totGen = 0;
+    TIPOS_MOV.forEach(t => {
+      const tbody = document.getElementById(`tbody-${sl}-${t.k}`);
+      const items = movsDia.filter(m => m.local===L && m.tipo===t.k);
+      const subtotal = items.reduce((a,b)=>a+(+b.importe||0),0);
+      totGen += subtotal;
+      if(items.length===0){
+        tbody.innerHTML = `<tr><td colspan="5" class="vacio">— sin ${t.seccion.toLowerCase()} cargados —</td></tr>`;
+      } else {
+        tbody.innerHTML = items.map(m => `
+          <tr>
+            <td>${m.caja}</td>
+            <td>${escapeHTML(m.vendedora||'—')}</td>
+            <td>${escapeHTML(m.detalle)}</td>
+            <td style="font-weight:700">${fmt(m.importe)}</td>
+            <td><button class="borrar" onclick="delMovimiento(${m.id})">✕</button></td>
+          </tr>`).join('');
+      }
+      document.getElementById(`subt-${sl}-${t.k}`).textContent = fmt(subtotal);
+      document.getElementById(`tot-${sl}-${t.k}`).textContent = fmt(subtotal);
+    });
+    document.getElementById(`tot-${sl}-all`).textContent = fmt(totGen);
+  });
+}
+
+function recalc(){
+  LOCALES.forEach(L => {
+    const sl = slug(L);
+    let LT = {ap:0, ef:0, cr:0, de:0, mp:0, qr:0, scan:0, real:0, dif:0};
+    const filas = CAJAS.map(C => {
+      const id = `${sl}_${slug(C)}`;
+      const get = (medio,tipo) => +document.querySelector(`input[data-local="${L}"][data-caja="${C}"][data-medio="${medio}"][data-tipo="${tipo}"]`).value || 0;
+      const getCampo = (campo) => +document.querySelector(`input[data-local="${L}"][data-caja="${C}"][data-campo="${campo}"]`)?.value || 0;
+      const empleado = document.querySelector(`input[data-local="${L}"][data-caja="${C}"][data-campo="empleado"]`).value || '—';
+      const apertura = getCampo('apertura');
+
+      const efectivoContado = get('efectivo','real');
+      const creditoReal = get('credito','real');
+      const debitoReal  = get('debito','real');
+      const mpReal      = get('mp','real');
+      const qrReal      = get('qr','real');
+      const pagosManual = get('pagos','real');
+      const movsCaja    = getMovsCaja(L,C);
+
+      // Efectivo Real (ventas) = efectivo contado − apertura − movimientos del día (esa caja) + pagos manuales
+      const efectivoRealVentas = efectivoContado - apertura - movsCaja + pagosManual;
+
+      // Total Scantech (suma de los 5 medios)
+      let totScan = 0;
+      MEDIOS.forEach(m => { totScan += get(m.k,'scan'); });
+
+      // Total Real = suma de medios reales (efectivo neto + crédito + débito + mp + qr)
+      const totReal = efectivoRealVentas + creditoReal + debitoReal + mpReal + qrReal;
+      const dif = totReal - totScan;
+
+      document.getElementById('movs-'+id).textContent = fmt(movsCaja);
+      document.getElementById('vef-'+id).textContent  = fmt(efectivoRealVentas);
+      document.getElementById('totscan-'+id).textContent = fmt(totScan);
+      document.getElementById('totreal-'+id).textContent = fmt(totReal);
+      document.getElementById('difval-'+id).textContent  = fmt(dif);
+      document.getElementById('dif-'+id).className = 'dif-caja ' + (dif===0?'ok':'bad');
+
+      LT.ap += apertura; LT.ef += efectivoRealVentas;
+      LT.cr += creditoReal; LT.de += debitoReal; LT.mp += mpReal; LT.qr += qrReal;
+      LT.scan += totScan; LT.real += totReal; LT.dif += dif;
+      return {caja:C, empleado, apertura, efectivoRealVentas, creditoReal, debitoReal, mpReal, qrReal, totScan, totReal, dif};
+    });
+
+    const tb = document.getElementById('resbody-'+sl);
+    tb.innerHTML = filas.map(f => `<tr>
+      <td>${f.caja}</td><td>${escapeHTML(f.empleado)}</td>
+      <td>${fmt(f.apertura)}</td>
+      <td>${fmt(f.efectivoRealVentas)}</td>
+      <td>${fmt(f.creditoReal)}</td>
+      <td>${fmt(f.debitoReal)}</td>
+      <td>${fmt(f.mpReal)}</td>
+      <td>${fmt(f.qrReal)}</td>
+      <td>${fmt(f.totScan)}</td>
+      <td>${fmt(f.totReal)}</td>
+      <td style="color:${f.dif===0?'#1b5e20':'#b71c1c'};font-weight:700">${fmt(f.dif)}</td>
+    </tr>`).join('');
+    document.getElementById('rt-ap-'+sl).textContent   = fmt(LT.ap);
+    document.getElementById('rt-ef-'+sl).textContent   = fmt(LT.ef);
+    document.getElementById('rt-cr-'+sl).textContent   = fmt(LT.cr);
+    document.getElementById('rt-de-'+sl).textContent   = fmt(LT.de);
+    document.getElementById('rt-mp-'+sl).textContent   = fmt(LT.mp);
+    document.getElementById('rt-qr-'+sl).textContent   = fmt(LT.qr);
+    document.getElementById('rt-scan-'+sl).textContent = fmt(LT.scan);
+    document.getElementById('rt-real-'+sl).textContent = fmt(LT.real);
+    const rt = document.getElementById('rt-dif-'+sl);
+    rt.textContent = fmt(LT.dif);
+    rt.style.color = LT.dif===0?'#1b5e20':'#b71c1c';
+  });
+  guardar();
+  renderMovimientos();
+}
+
+function guardar(){
+  const obj = {fecha: fechaActual(), vals:{}};
+  document.querySelectorAll('main input').forEach(i => {
+    if(!i.dataset.local) return;
+    const k = [i.dataset.local||'', i.dataset.caja||'', i.dataset.medio||i.dataset.campo||'', i.dataset.tipo||''].join('|');
+    obj.vals[k] = i.value;
+  });
+  try{ localStorage.setItem(KEY, JSON.stringify(obj)); }catch(e){}
+}
+function guardarMovs(){
+  try{ localStorage.setItem(KEY_MOV, JSON.stringify(movimientos)); }catch(e){}
+}
+function cargar(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    if(raw){
+      const o = JSON.parse(raw);
+      if(o.fecha) document.getElementById('fecha').value = o.fecha;
+      document.querySelectorAll('main input').forEach(i => {
+        if(!i.dataset.local) return;
+        const k = [i.dataset.local||'', i.dataset.caja||'', i.dataset.medio||i.dataset.campo||'', i.dataset.tipo||''].join('|');
+        const v = o.vals?.[k];
+        if(v) i.value = v;
+      });
+    }
+    const rawM = localStorage.getItem(KEY_MOV);
+    if(rawM){ movimientos = JSON.parse(rawM) || []; }
+  }catch(e){}
+}
+function limpiar(){
+  if(!confirm('¿Borrar todos los datos cargados (cajas y movimientos)?')) return;
+  localStorage.removeItem(KEY);
+  localStorage.removeItem(KEY_MOV);
+  location.reload();
+}
+function exportarCSV(){
+  const fecha = fechaActual() || new Date().toISOString().slice(0,10);
+  const headers = ['Fecha','Local','Caja','Empleado','Apertura'];
+  MEDIOS.forEach(m => { headers.push(m.label+' Scantech'); headers.push(m.label+' Real'); });
+  headers.push('Pagos manual','Movimientos día','Efectivo Real (ventas)','Total Scantech','Total Real','Diferencia');
+  const rows = [['# CAJAS'], headers];
+  LOCALES.forEach(L => {
+    CAJAS.forEach(C => {
+      const get = (medio,tipo) => +document.querySelector(`input[data-local="${L}"][data-caja="${C}"][data-medio="${medio}"][data-tipo="${tipo}"]`).value || 0;
+      const getCampo = (campo) => +document.querySelector(`input[data-local="${L}"][data-caja="${C}"][data-campo="${campo}"]`)?.value || 0;
+      const empleado = document.querySelector(`input[data-local="${L}"][data-caja="${C}"][data-campo="empleado"]`).value || '';
+      const apertura = getCampo('apertura');
+      const row = [fecha,L,C,empleado,apertura];
+      let totScan=0;
+      MEDIOS.forEach(m => {
+        const s=get(m.k,'scan'), r=get(m.k,'real');
+        row.push(s,r); totScan+=s;
+      });
+      const efectivoContado = get('efectivo','real');
+      const creditoReal = get('credito','real');
+      const debitoReal  = get('debito','real');
+      const mpReal      = get('mp','real');
+      const qrReal      = get('qr','real');
+      const pagos = get('pagos','real');
+      const movsCaja = getMovsCaja(L,C);
+      const efRealVentas = efectivoContado - apertura - movsCaja + pagos;
+      const totReal = efRealVentas + creditoReal + debitoReal + mpReal + qrReal;
+      row.push(pagos, movsCaja, efRealVentas, totScan, totReal, totReal-totScan);
+      rows.push(row);
+    });
+  });
+  rows.push([], ['# MOVIMIENTOS'], ['Fecha','Local','Caja','Vendedora','Tipo','Detalle','Importe']);
+  getMovsDelDia().forEach(m => {
+    rows.push([m.fecha, m.local, m.caja, m.vendedora||'',
+      TIPOS_MOV.find(t=>t.k===m.tipo)?.label||m.tipo, m.detalle, m.importe]);
+  });
+  const csv = rows.map(r => r.map(c => String(c).replace(/[\r\n;]/g,' ')).join(';')).join('\n');
+  const blob = new Blob(["﻿"+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `goloriolo_caja_${fecha}.csv`;
+  a.click();
+}
+
+buildTabs();
+buildUI();
+document.getElementById('fecha').valueAsDate = new Date();
+cargar();
+recalc();
+
+document.addEventListener('input', e => {
+  if(e.target.closest('.mov-form')) return;
+  if(e.target.id === 'fecha'){ recalc(); return; }
+  recalc();
+});
+document.getElementById('fecha').addEventListener('change', recalc);
+</script>
+</body>
+</html>
